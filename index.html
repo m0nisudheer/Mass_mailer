@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <link rel="shortcut icon" href="./Images/icon.png" type="image/x-icon">
+  <title>Mass-Mail-Dispatcher</title>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css?family=Raleway:200,100,400" rel="stylesheet" type="text/css" />
+</head>
+
+<body>
+  <form method="post" id="emailForm">
+        <div class="form-header">Mass-Mail-Dispatcher</div>
+
+        <div class="form-group">
+            <label for="senderEmail">From:</label>
+            <input type="email" id="senderEmail" name="senderEmail" placeholder="your-email@example.com" required>
+        </div>
+
+        <div class="form-group">
+            <label for="subject">Subject:</label>
+            <textarea id="subject" name="subject" placeholder="Enter the subject here" required></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="csvFile">CSV File:</label>
+            <input type="file" id="csvFile" name="csvFile" accept=".csv" required>
+        </div>
+
+        <div class="form-group">
+            <label for="message">Message:</label>
+            <textarea id="message" name="message" placeholder="Enter your message here" required></textarea>
+        </div>
+
+        <div class="form-actions">
+            <div class="send-button">
+                <input type="button" value="Send Emails" onclick="validateAndSendEmails()">
+            </div>
+        </div>
+
+        <div class="status">
+            <div class="status-section">
+                <p>Valid Emails: <span id="validEmailCount">0</span></p>
+                <select id="validEmails" class="email-dropdown" multiple></select>
+            </div>
+            <div class="status-section">
+                <p>Invalid Emails: <span id="invalidEmailCount">0</span></p>
+                <select id="invalidEmails" class="email-dropdown" multiple></select>
+            </div>
+        </div>
+        <div class="design">
+          &copy;Designed and developed by <b style="color:white">Mani Sudheer</b>
+        </div>
+    </form>
+
+  <!-- javascript -->
+
+  <script type="text/javascript">
+    (function () {
+      emailjs.init("public key"); // Replace with your actual public key
+    })();
+
+    function validateAndSendEmails() {
+      var form = document.getElementById('emailForm');
+      if (form.checkValidity()) {
+        sendEmails();
+      } else {
+        form.reportValidity();
+      }
+    }
+
+    function sendEmails() {
+      var senderEmail = document.getElementById("senderEmail").value;
+      var message = document.getElementById("message").value;
+      var subject = document.getElementById("subject").value;
+
+      var validEmails = [];
+      var invalidEmails = [];
+
+      var file = document.getElementById("csvFile").files[0];
+      var reader = new FileReader();
+      reader.onload = function (event) {
+        var csv = event.target.result;
+        var lines = csv.split('\n');
+
+        var emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+         // Ensure no duplicates and validate emails
+        var seenEmails = new Set();
+
+        for (var i = 0; i < lines.length; i++) {
+            var email = lines[i].trim();
+            if (email.length > 0 && !seenEmails.has(email)) {
+                seenEmails.add(email);
+                if (emailRegex.test(email)) {
+                    validEmails.push(email);
+                } else {
+                    invalidEmails.push(email);
+                }
+            }
+        }
+
+        // Update dropdown lists
+        updateEmailDropdown("validEmails", validEmails);
+        updateEmailDropdown("invalidEmails", invalidEmails);
+
+        // Update email counts
+        document.getElementById("validEmailCount").innerText = "(" + validEmails.length + ")";
+        document.getElementById("invalidEmailCount").innerText = "(" + invalidEmails.length + ")";
+
+        var sendPromises = validEmails.map(function (email) {
+          var templateParams = {
+            to_name: email,
+            from_name: senderEmail,
+            message_html: message,
+            subject_html: subject
+          };
+
+          return emailjs.send('service-id', 'template-id', templateParams)//replace with your id's
+            .then(function (response) {
+              console.log("SUCCESS", response);
+            }, function (error) {
+              console.error("FAILED", error);
+            });
+        });
+
+        Promise.all(sendPromises)
+          .then(function () {
+            alert("Emails sent to valid email addresses.");
+          })
+          .catch(function (error) {
+            console.error("Error sending some emails", error);
+            alert("Failed to send some emails. Check console for details.");
+          });
+      };
+
+      reader.onerror = function () {
+        console.error("Error reading the file.");
+        alert("Error reading the file.");
+      };
+
+      reader.readAsText(file);
+    }
+
+    function updateEmailDropdown(elementId, emails) {
+      var dropdown = document.getElementById(elementId);
+      dropdown.innerHTML = ''; // Clear existing options
+
+      emails.forEach(function (email) {
+        var option = document.createElement('option');
+        option.value = email;
+        option.textContent = email;
+        dropdown.appendChild(option);
+      });
+    }
+  </script>
+</body>
+
+</html>
